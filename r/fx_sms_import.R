@@ -3,12 +3,15 @@
 
 fx_sms_import <- function(path = NULL, exclude_names = NULL) {
 
-  library(tidyverse)
+  library(dplyr)
+  library(tidyr)
+  library(readr)
   library(anytime)
   library(lubridate)
   library(foreach)
   library(xml2)
   library(rlang)
+  library(rwhatsapp)
 
 
   # Import RDS or XML -------------------------------------------------------
@@ -18,7 +21,20 @@ fx_sms_import <- function(path = NULL, exclude_names = NULL) {
   if (str_detect(path_explicit, ".rds")) {
     inform("Importing rds file")
 
+    # Import RDS --------------------------------------------------------------
     read_rds(path_explicit) %>% filter(!Contact %in% exclude_names)
+
+  } else if (str_detect(path_explicit, c("WhatsApp", ".txt")) %>% all()) {
+    inform("Importing WhatsApp txt file")
+
+    # Import WhatsApp ---------------------------------------------------------
+    rwa_read(path_explicit) %>%
+      filter(!is.na(author)) %>%
+      mutate(Contact = author %>% unique() %>% setdiff("Kevin")) %>%
+      mutate(MessageType = ifelse(author == "Kevin", "Sent", "Received")) %>%
+      mutate(Message = str_replace(text, "<Media omitted>", "<m>")) %>%
+      mutate(MessageLength = str_length(Message)) %>%
+      select(Contact, DateTime = time, MessageType, Message, MessageLength)
 
   } else if (str_detect(path_explicit, ".xml")) {
     inform("Importing xml file")
@@ -135,3 +151,4 @@ fx_sms_import <- function(path = NULL, exclude_names = NULL) {
 # test_read_2 <- fx_sms_import(path = "data/new/wa_2019-08-20.rds")
 # test_read_3 <- fx_sms_import(path = "data/new/sms-2019-07-26 15-23-52.xml")
 # test_read_4 <- fx_sms_import(exclude_names = "Emily Kay Piellusch")
+# test_read_5 <- fx_sms_import("C:/Users/kputs/Downloads/WhatsApp Chat with Emily Kay Piellusch.txt")
