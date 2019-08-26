@@ -15,7 +15,7 @@ fx_sms_append <- function(new, master) {
     bind_rows(master, new) %>%
     arrange(desc(DateTime)) %>%
     ungroup() %>%
-    distinct(Contact, DateTime, MessageType, Message)
+    distinct()
 
 
   # Quality Check ----
@@ -37,16 +37,26 @@ fx_sms_append <- function(new, master) {
     anti_join(data_update, data_check,
               by = c("Contact", "DateTime", "MessageType", "Message"))
 
+  data_added <-
+    anti_join(data_check, master,
+              by = c("Contact", "DateTime", "MessageType", "Message"))
+
   rows_removed <- nrow(data_update) - nrow(data_check)
+  rows_added   <- nrow(data_check) - nrow(master)
+
   str_glue("|- Duplicate Rows Found: {rows_removed}") %>% inform()
+  str_glue("|- Rows Added to Backup: {rows_added}") %>% inform()
 
 
   # Output ----
   lst(new = new,
       old = master,
       master = data_check,
-      notes = str_glue("Duplicate Rows Found: {rows_removed}"),
-      dupes = data_removed)
+      dupes = data_removed,
+      added = data_added,
+      notes = list(removoed = str_glue("Duplicate Rows Found: {rows_removed}"),
+                   added    = str_glue("Rows Added: {rows_added}"))
+  )
 
 }
 

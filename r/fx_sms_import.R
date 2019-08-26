@@ -17,6 +17,7 @@ fx_sms_import <- function(path = NULL, exclude_names = NULL) {
   # Import RDS or XML -------------------------------------------------------
 
   path_explicit <- if (is_null(path)) {file.choose()} else {path}
+  str_c("Importing: ", path_explicit) %>% inform()
 
   if (str_detect(path_explicit, ".rds")) {
     inform("Importing rds file")

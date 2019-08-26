@@ -10,6 +10,7 @@ pacman::p_load(tidyverse, rwhatsapp, lubridate)
 
 d_raw <- rwa_read("C:/Users/kputs/Downloads/WhatsApp Chat with Emily Kay Piellusch.txt")
 
+
 d_prep <-
   d_raw %>%
   filter(!is.na(author)) %>%
@@ -20,6 +21,11 @@ d_prep <-
   select(Contact, DateTime = time, MessageType, Message, MessageLength, emoji_name, author) %>%
   print()
 
+d_prep %>% filter(date(DateTime) == "2019-8-09")
+
+my_fx <- fx_sms_import("C:/Users/kputs/Downloads/WhatsApp Chat with Emily Kay Piellusch.txt")
+
+my_fx %>% filter(date(DateTime) == "2019-8-09") %>% view()
 
 # Export ------------------------------------------------------------------
 
