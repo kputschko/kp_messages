@@ -1,23 +1,14 @@
 
 # SMS - Visualize Messages ------------------------------------------------
 
-fx_sms_visualize <- function(data, contact = NULL, plot_type = "generic", date_filter = NULL) {
+fx_sms_visualize <- function(data, contact = NULL, plot_type = "generic") {
 
   source('C:/Users/kputs/OneDrive/Data/kp_messages/r/fx_sms_summarise.R')
+  source('C:/Users/kputs/OneDrive/Data/kp_messages/r/fx_sms_filter.R')
 
   library(dplyr)
   library(ggplot2)
   library(plotly)
-
-  # Apply Date Filter -------------------------------------------------------
-
-  data_filter <-
-    if (is_null(date_filter)) {
-      data
-    } else {
-      data %>% filter(DateTime < max(date_filter), DateTime > min(date_filter))
-    }
-
 
   if (plot_type == "generic" && is_null(contact)) {
     # Generic Overall Plot ----------------------------------------------------

@@ -1,5 +1,8 @@
 
 # Function - SMS Summarise ------------------------------------------------
+# Types of summaries include:
+# glance, time_period, by_contact
+
 
 fx_sms_summarise <- function(data, type = "glance") {
 
@@ -34,7 +37,7 @@ fx_sms_summarise <- function(data, type = "glance") {
   } else if (type == "by_contact") {
     # ---- Summary by contact, with ranking of contacts
     data %>%
-      group_by(Contact) %>%
+      group_by(Contact, add = TRUE) %>%
       summarise(message_n     = n(),
                 length_sum    = sum(MessageLength),
                 length_avg    = mean(MessageLength),
