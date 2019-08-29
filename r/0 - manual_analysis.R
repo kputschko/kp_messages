@@ -55,17 +55,28 @@ data_updated$master %>% fx_sms_export(filename_label = "master")
 data_master <- fx_sms_import("C:/Users/kputs/OneDrive/Data/kp_messages/data/2019-08-26_master.rds")
 
 
-# General Visuals ---------------------------------------------------------
-data_master %>% fx_sms_visualize()
-data_master %>% fx_sms_filter(mindate = "2019-01-01") %>% fx_sms_visualize()
+# Date Filters ------------------------------------------------------------
+data_master %>% fx_sms_filter(mindate = "2019-01-01", maxdate = "2019-06-01")
 
 
-# General Summaries -------------------------------------------------------
-data_master %>% fx_sms_summarise("by_contact")
-data_master %>% fx_sms_summarise("by_contact") %>% top_n(20, -rank_score) %>% arrange(rank_score) %>% view()
+# Overall Scatterplot -----------------------------------------------------
+data_master %>% fx_sms_visualize(plot_type = "scatter_all")
 
-data_master %>% fx_sms_filter(mindate = "2019-01-01") %>% fx_sms_summarise()
-data_master %>% fx_sms_filter(mindate = "2019-01-01") %>% fx_sms_summarise("by_contact") %>% view()
+
+# Top N - Bar Comparison --------------------------------------------------
+plot_top <-
+  data_master %>%
+  fx_sms_summarise("by_contact", rank_n = 20) %>%
+  fx_sms_visualize("bar_rank")
+
+plot_top$message_n
+
+
+# Top N - Send/Rec Comparison ---------------------------------------------
+
+
+# All - Habit Comparison --------------------------------------------------
+# Who is new, who started texting more, who texted less?
 
 
 

@@ -20,14 +20,10 @@ fx_sms_import <- function(path = NULL, exclude_names = NULL) {
   str_c("Importing: ", path_explicit) %>% inform()
 
   if (str_detect(path_explicit, ".rds")) {
-    inform("Importing rds file")
-
     # Import RDS --------------------------------------------------------------
     read_rds(path_explicit) %>% filter(!Contact %in% exclude_names)
 
   } else if (str_detect(path_explicit, c("WhatsApp", ".txt")) %>% all()) {
-    inform("Importing WhatsApp txt file")
-
     # Import WhatsApp ---------------------------------------------------------
     rwa_read(path_explicit) %>%
       filter(!is.na(author)) %>%
@@ -38,8 +34,6 @@ fx_sms_import <- function(path = NULL, exclude_names = NULL) {
       select(Contact, DateTime = time, MessageType, Message, MessageLength)
 
   } else if (str_detect(path_explicit, ".xml")) {
-    inform("Importing xml file")
-
     # Import XML --------------------------------------------------------------
     data_xml_raw <- read_xml(path_explicit, options = "HUGE")
 

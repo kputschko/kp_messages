@@ -49,12 +49,12 @@ fx_sms_filter <- function(data,
 # mindate <- "2019-07-01"
 # maxdate <- NULL
 
-data_master %>% fx_sms_filter()
-data_master %>% fx_sms_filter(contact_filter = "Emily Kay Piellusch")
-data_master %>% fx_sms_filter(contact_filter = "Emily Kay Piellusch", mindate = "2019-07-01")
-
-data_master %>%
-  fx_sms_filter(contact_filter = "Emily Kay Piellusch",
-                mindate = "2019-07-01",
-                maxdate = "2019-08-01") %>%
-  fx_sms_summarise()
+# data_master %>% fx_sms_filter()
+# data_master %>% fx_sms_filter(contact_filter = "Emily Kay Piellusch")
+# data_master %>% fx_sms_filter(contact_filter = "Emily Kay Piellusch", mindate = "2019-07-01")
+#
+# data_master %>%
+#   fx_sms_filter(contact_filter = "Emily Kay Piellusch",
+#                 mindate = "2019-07-01",
+#                 maxdate = "2019-08-01") %>%
+#   fx_sms_summarise()
