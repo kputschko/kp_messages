@@ -3,21 +3,23 @@
 
 fx_sms_visualize <- function(data, plot_type, contact = NULL) {
 
-  source('C:/Users/kputs/OneDrive/Data/kp_messages/r/fx_sms_summarise.R')
-  source('C:/Users/kputs/OneDrive/Data/kp_messages/r/fx_sms_filter.R')
+  source('r/fx_sms_summarise.R')
+  source('r/fx_sms_filter.R')
+  source('r/fx_sms_plot_themes.R')
 
   library(dplyr)
   library(ggplot2)
   library(plotly)
 
+
   if (plot_type == "scatter_all" && is_null(contact)) {
     # All - Scatterplot -------------------------------------------------------
     # Scatter plot of day by message length, with number of messages and contacts
-    plot_generic <-
+    .temp_plot <-
       data %>%
-      mutate(day = date(DateTime)) %>%
+      fx_sms_summarise("time_periods") %>%
       group_by(day) %>%
-      fx_sms_summarise("time_period") %>%
+      fx_sms_summarise("group_summary") %>%
 
       ggplot() +
       aes(x = day, y = length_sum, size = message_n, color = contact_n) +
@@ -25,7 +27,7 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
       scale_color_viridis_c() +
       labs(y = NULL, x = NULL, color = NULL, size = NULL)
 
-    plot_generic %>% ggplotly()
+    .temp_plot %>% ggplotly()
 
 
   } else if (plot_type == "generic" && !is_null(contact)) {
@@ -62,6 +64,28 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
 
      map(.temp_cols, .temp_fx) %>%
        set_names(.temp_cols)
+
+  } else if (plot_type == "send_rec") {
+
+    .temp_plot <-
+      data %>%
+      ggplot() +
+      aes(x = Contact) +
+      geom_linerange(aes(ymin = Q1, ymax = Q3, color = `Longer Messages`)) +
+      geom_point(aes(y = Median,
+                     size = `Days of Contact`,
+                     fill = `Longer Messages`),
+                 color = "black",
+                 shape = 21) +
+      geom_hline(aes(yintercept = 0)) +
+      labs(x = NULL, color = NULL, y = "Median Difference") +
+      guides(color = FALSE, fill = FALSE, size = FALSE) +
+      fx_sms_plot_theme()$light_ggtheme +
+      theme(panel.grid.major.x = element_blank(),
+            panel.grid.minor = element_line(linetype = 3),
+            axis.text.x = element_text(angle = -35))
+
+    .temp_plot %>% ggplotly()
 
   }
 

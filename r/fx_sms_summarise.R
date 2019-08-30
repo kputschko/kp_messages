@@ -7,8 +7,11 @@
 fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
   library(dplyr)
+  library(lubridate)
   library(rlang)
   library(scales)
+
+
 
   if (type == "glance") {
     # ---- Summary at a glance, one row for entire database
@@ -22,7 +25,19 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
       mutate_at(vars(Contacts, Messages, Length), comma)
 
 
-  } else if (type == "time_period") {
+
+  } else if (type == "time_periods") {
+    data %>%
+      mutate(hour = hour(DateTime),
+             day = date(DateTime),
+             weekday = wday(DateTime, label = TRUE, week_start = 1),
+             week = floor_date(DateTime, unit = "week"),
+             month = floor_date(DateTime, unit = "month") %>% date(),
+             year = floor_date(DateTime, unit = "year") %>% year())
+
+
+
+  } else if (type == "group_summary") {
     # ---- Detailed summary by specified time period
     if (data %>% group_vars() %>% is_empty()) {abort("Time period summaries require a group column")}
 
@@ -34,10 +49,11 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
                 length_std = sd(MessageLength))
 
 
+
   } else if (type == "by_contact") {
-    # ---- Summary by contact, with ranking of contacts
-    .temp_data <-
-      data %>%
+    # --- Summary by contact,
+    # --- Add groups prior to running this function for day/week/message type/etc.
+    data %>%
       group_by(Contact, add = TRUE) %>%
       summarise(message_n     = n(),
                 length_sum    = sum(MessageLength),
@@ -48,9 +64,13 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
       mutate(daily_messages   = message_n / contact_days,
              daily_length     = length_sum / contact_days)
 
-    # ---- Begin Ranking
-    .temp_rank <-
-      .temp_data %>%
+
+
+  } else if (type == "rank") {
+    stopifnot(c("message_n", "length_sum") %in% colnames(data))
+
+    .temp_data <-
+      data %>%
       ungroup() %>%
       mutate(.Rank_Message_Count = dense_rank(desc(message_n)),
              .Rank_Length_Sum = dense_rank(desc(length_sum)),
@@ -61,14 +81,38 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
       select(-contains(".Rank"))
 
     # ---- Select Top N
-    # !!! Remove this if I find that this data set ends up being created multiple times
-    if (is_empty(rank_n)) {.temp_rank} else {
-    .temp_rank %>%
+    if (is_empty(rank_n)) {.temp_data} else {
+      .temp_data %>%
         top_n(rank_n, -rank_score) %>%
         arrange(rank_score)
     }
+
+
+
+  } else if (type == "send_rec") {
+    data %>%
+      select(Contact, DateTime, MessageType, Message, MessageLength, day) %>%
+      mutate(length_adj = if_else(MessageType == "Sent", -MessageLength, MessageLength)) %>%
+      group_by(Contact, day) %>%
+      summarise(length_diff = sum(length_adj)) %>%
+      group_by(Contact) %>%
+      summarise(quantiles = list(quantile(length_diff) %>% enframe() %>% spread(name, value)),
+                `Days of Contact` = length(day)) %>%
+      unnest(quantiles) %>%
+      rename(Min = "0%", Max = "100%", Q1 = "25%", Median = "50%", Q3 = "75%") %>%
+      arrange(Median) %>%
+      mutate(Contact = as_factor(Contact),
+             `Longer Messages` = if_else(Median > 0, "Mine", "Theirs")) %>%
+      arrange(-`Days of Contact`)
+
+
 
   }
 
 }
 
+
+# Test --------------------------------------------------------------------
+
+# data <- data_master
+# data <- data_periods
