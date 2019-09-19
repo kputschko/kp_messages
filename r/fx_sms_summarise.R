@@ -71,7 +71,6 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
     .temp_data <-
       data %>%
-      ungroup() %>%
       mutate(.Rank_Message_Count = dense_rank(desc(message_n)),
              .Rank_Length_Sum = dense_rank(desc(length_sum)),
              .Rank_Contact_Days = dense_rank(desc(contact_days)),
@@ -106,6 +105,33 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
       arrange(-`Days of Contact`)
 
 
+  } else if (type == "period_adjustment") {
+
+    data %>%
+      fx_sms_summarise("time_periods") %>%
+      mutate(period = ifelse(day >= max(day) - days(90), "current", "historical")) %>%
+      group_nest(period) %>%
+      deframe() %>%
+      modify_at("current", ~ .x %>%
+                  fx_sms_summarise("by_contact") %>%
+                  fx_sms_summarise("rank", rank_n = 20) %>%
+                  mutate(days_all = difftime(contact_last, contact_first, units = "days") %>% as.numeric() %>% magrittr::add(1),
+                         days_proportion = contact_days / days_all)) %>%
+      modify_at("historical", ~ .x %>%
+                  fx_sms_summarise("by_contact") %>%
+                  mutate(days_all = difftime(contact_last, contact_first, units = "days") %>% as.numeric() %>% magrittr::add(1),
+                         days_proportion = contact_days / days_all)) %>%
+      reduce(left_join, by = "Contact", suffix = c(".c", ".h")) %>%
+      mutate(adj_length = length_avg.c / length_avg.h,
+             adj_freq   = daily_messages.c / daily_messages.h) %>%
+      replace_na(list(adj_length = 1, adj_freq = 1)) %>%
+      arrange(adj_freq) %>%
+      mutate_at("Contact", as_factor) %>%
+      select(Contact, adj_freq, adj_length) %>%
+      gather(label, value, adj_freq, adj_length) %>%
+      mutate(flag = case_when(value == 1 ~ "new",
+                              value > 1 ~ "pos",
+                              value < 1 ~ "neg"))
 
   }
 

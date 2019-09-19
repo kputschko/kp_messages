@@ -7,7 +7,6 @@
 # - Find a way to quantify effort. For example, 2019-08-09 was 428 messages to a single person!
 
 
-
 # Environment -------------------------------------------------------------
 
 pacman::p_load(tidyverse)
@@ -68,6 +67,8 @@ data_rank <-
   fx_sms_summarise("by_contact") %>%
   fx_sms_summarise("rank", rank_n = 20)
 
+
+# Is this necessary?  For Habit Comparison, I want data_master > time_periods
 data_periods <-
   data_rank %>%
   select(Contact) %>%
@@ -97,49 +98,46 @@ data_periods %>%
 # All - Habit Comparison --------------------------------------------------
 # Who is new, who started texting more, who texted less?
 
-# data_master %>%
-#   mutate(Hour = hour(DateTime),
-#          Day = date(DateTime),
-#          Weekday = wday(DateTime, label = TRUE, week_start = 1),
-#          Week = floor_date(DateTime, unit = "week"),
-#          Month = floor_date(DateTime, unit = "month") %>% date(),
-#          Year = floor_date(DateTime, unit = "year") %>% year()) %>%
-#   group_by(Contact, Day) %>%
-#   summarise(Message_Count = n(),
-#             Length_Sum = sum(MessageLength),
-#             Length_Avg = mean(MessageLength)) %>%
-#   ungroup() %>%
-#   mutate(Period = ifelse(Day >= max(Day) - days(90), "new", "historical")) %>%
-#   group_by(Contact, Period) %>%
-#   summarise(day_min = min(Day),
-#             day_max = max(Day),
-#             day_all = difftime(day_max, day_min, units = "days") %>% as.numeric() %>% ifelse(. == 0, 1, .),
-#             day_contact = length(Day),
-#             day_proportion = day_contact / day_all,
-#             length_sum = sum(Length_Sum),
-#             day_length = length_sum / day_contact) %>%
-#   select(Period, Contact, day_proportion, day_length) %>%
-#   gather(measure, value, day_proportion:day_length) %>%
-#   unite(Label, Period, measure) %>%
-#   spread(Label, value, fill = 0) %>%
-#   mutate(change_length = new_day_length / historical_day_length,
-#          change_frequency = new_day_proportion / historical_day_proportion) %>%
-#
-#   # Visuals
-#   filter(Contact %in% data_top()$Contact) %>%
-#   ggplot() +
-#   aes(x = change_length,
-#       y = change_frequency,
-#       text = str_glue("Contact: {Contact}\nLength Change: {change_length %>% number(accuracy = 0.01, suffix = 'x')}\nFrequency Change: {change_frequency %>% number(accuracy = 0.01, suffix = 'x')}")) +
-#   geom_jitter(width = 0.025, height = 0.025, color = "#3182bd") +
-#   geom_hline(yintercept = 1) +
-#   geom_vline(xintercept = 1) +
-#   labs(x = "Daily Message Length",
-#        y = "Daily Contact Frequency") +
-#   fx_plot_theme()$light
-#
-#
-# plot_adjustment %>% ggplotly(tooltip = "text")
+data_master %>%
+  fx_sms_summarise("time_periods") %>%
+  fx_sms_summarise("period_adjustment") %>%
+  fx_sms_visualize("period_adjustment")
+
+
+# Test - Reg Exp ----------------------------------------------------------
+
+# install.packages("devtools")
+# devtools::install_github("VerbalExpressions/RVerbalExpressions")
+library(RVerbalExpressions)
+
+test_string <-
+  data_master %>%
+  # filter(str_detect(Message, "https:")) %>%
+  filter(str_detect(Message, "goo.gl")) %>%
+  slice(1:10) %>%
+  pull(Message) %>%
+  print()
+
+test_regex <-
+  rx() %>%
+  rx_seek_prefix("https://") %>%
+  rx_anything() %>%
+  rx_seek_suffix(".com")
+
+test_string %>% str_extract(test_regex)
+
+test_regex2 <-
+  rx() %>%
+  rx_find("https://") %>%
+  rx_anything()
+
+  # rx_anything() %>%
+  # rx_space() %>%
+  # rx_word_edge()
+  # rx_one_or_more()
+
+test_string %>% str_extract(test_regex2)
+test_string %>% str_extract('(?:(?:https?|ftp):\\/\\/)?[\\w/\\-?=%.]+\\.[\\w/\\-?=%.]+')
 
 
 # Order of Operations -----------------------------------------------------

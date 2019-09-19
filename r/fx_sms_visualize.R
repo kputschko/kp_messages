@@ -8,6 +8,7 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
   source('r/fx_sms_plot_themes.R')
 
   library(dplyr)
+  library(colorspace)
   library(ggplot2)
   library(plotly)
 
@@ -87,6 +88,27 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
 
     .temp_plot %>% ggplotly()
 
+  } else if (plot_type == "period_adjustment") {
+
+    data %>%
+      ggplot() +
+      aes(x = Contact) +
+      geom_hline(yintercept = 1, color = "grey80") +
+      geom_linerange(aes(ymin = 1, ymax = value, color = flag), size = 1.5) +
+      geom_point(aes(y = value, fill = flag), size = 3.5, shape = 21, color = "grey40") +
+      facet_wrap(vars(label), labeller = as_labeller(c("adj_freq" = "Change in\nMessage Frequency",
+                                                       "adj_length" = "Change in\nMessage Length"))) +
+      coord_flip() +
+      labs(y = NULL, x = NULL) +
+      guides(fill = "none", color = guide_legend(title = NULL)) +
+      scale_color_manual(values = c("#f8766d" %>% lighten(0.40),
+                                    "#00ba38" %>% lighten(0.40),
+                                    "#619cff" %>% lighten(0.40)),
+                         breaks = c("pos", "new", "neg"),
+                         labels = c("Increase", "New Contact", "Decrease")) +
+      scale_fill_manual(values = c("#f8766d", "#00ba38", "#619cff")) +
+      scale_y_continuous(limits = c(0.25, NA), labels = unit_format(unit = "x")) +
+      theme_minimal()
   }
 
 }
