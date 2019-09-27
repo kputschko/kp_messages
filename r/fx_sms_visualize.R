@@ -108,7 +108,7 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
                          labels = c("Increase", "New Contact", "Decrease")) +
       scale_fill_manual(values = c("#f8766d", "#00ba38", "#619cff")) +
       scale_y_continuous(limits = c(0.25, NA), labels = unit_format(unit = "x")) +
-      theme_minimal()
+      fx_sms_plot_theme()$light_theme
   }
 
 }

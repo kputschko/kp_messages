@@ -55,7 +55,7 @@ data_updated$master %>% fx_sms_export(filename_label = "master")
 
 # Data Repository ---------------------------------------------------------
 data_master <-
-  "C:/Users/kputs/OneDrive/Data/kp_messages/data/2019-08-28_master.rds" %>%
+  "C:/Users/kputs/OneDrive/Data/kp_messages/data/2019-09-26_master.rds" %>%
   fx_sms_import()
 
 data_dates <-

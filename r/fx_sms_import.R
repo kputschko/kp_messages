@@ -25,13 +25,38 @@ fx_sms_import <- function(path = NULL, exclude_names = NULL) {
 
   } else if (str_detect(path_explicit, c("WhatsApp", ".txt")) %>% all()) {
     # Import WhatsApp ---------------------------------------------------------
-    rwa_read(path_explicit) %>%
+    # rwa_read(path_explicit) %>%
+    #   filter(!is.na(author)) %>%
+    #   mutate(Contact = author %>% unique() %>% setdiff("Kevin")) %>%
+    #   mutate(MessageType = ifelse(author == "Kevin", "Sent", "Received")) %>%
+    #   mutate(Message = str_replace(text, "<Media omitted>", "<m>")) %>%
+    #   mutate(MessageLength = str_length(Message)) %>%
+    #   select(Contact, DateTime = time, MessageType, Message, MessageLength)
+
+    path_explicit %>%
+      read_lines(skip_empty_rows = TRUE) %>%
+      enframe(name = "id", value = "raw") %>%
+      mutate(time = str_extract(raw, "^\\d+-\\d+-\\d+.*-|[^-]+ - ")) %>%
+      mutate(fix_na = ifelse(is.na(time),
+                             str_c(lag(raw), "\n", raw),
+                             raw)) %>%
+      filter(!is.na(time)) %>%
+      mutate(message = str_remove(fix_na, time),
+             time = str_remove(time, " - $"),
+             datetime = parse_date_time(time, orders = "mdy HM"),
+             author = str_extract(message, "[^:]+: "),
+             Message = str_remove(message, author),
+             author = str_remove(author, ": $")) %>%
       filter(!is.na(author)) %>%
-      mutate(Contact = author %>% unique() %>% setdiff("Kevin")) %>%
-      mutate(MessageType = ifelse(author == "Kevin", "Sent", "Received")) %>%
-      mutate(Message = str_replace(text, "<Media omitted>", "<m>")) %>%
-      mutate(MessageLength = str_length(Message)) %>%
-      select(Contact, DateTime = time, MessageType, Message, MessageLength)
+      group_by(author, datetime) %>%
+      mutate(DateTime = datetime + seconds(sequence(n()))) %>%
+      ungroup() %>%
+      select(DateTime, Message, author) %>%
+      mutate(Contact = author %>% unique() %>% setdiff("Kevin"),
+             MessageType = ifelse(author == "Kevin", "Sent", "Received"),
+             Message = str_replace(Message, "<Media omitted>", "<m>"),
+             MessageLength = str_length(Message)) %>%
+      select(Contact, DateTime, MessageType, Message, MessageLength)
 
   } else if (str_detect(path_explicit, ".xml")) {
     # Import XML --------------------------------------------------------------
