@@ -1,0 +1,43 @@
+---
+title: "Untitled"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Chart A
+
+```{r}
+output$text1 <- renderText({"Hello World!"})
+output$text2 <- renderText({"I have nothing to say"})
+output$text3 <- renderText({"Will this one work?"})
+
+
+textOutput("text1")
+textOutput("text2")
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Chart B
+
+```{r}
+textOutput("text3")
+```
+
+### Chart C
+
+```{r}
+
+```
+

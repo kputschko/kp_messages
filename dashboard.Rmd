@@ -1,0 +1,276 @@
+---
+title: "Message Analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(tidyverse, rlang, shiny, flexdashboard, plotly)
+pacman::p_load_gh("rstudio/gt")
+
+source("r/fx_sms_import.r")
+source("r/fx_sms_summarise.r")
+source("r/fx_sms_append.r")
+source("r/fx_sms_export.r")
+source("r/fx_sms_visualize.r")
+source("r/fx_sms_filter.r")
+```
+
+
+Sidebar {.sidebar}
+================================================================================
+
+```{r sidebar}
+input_choices <- dir("data", pattern = "master.rds")
+
+selectizeInput(inputId = "input_select",
+               label = "Select Master Database" %>% strong() %>% h5(),
+               multiple = TRUE,
+               choices = input_choices,
+               options = list(maxItems = 1, 
+                              placeholder = "Database Selection"))
+
+div(style = "display:inline-block;width:100%;text-align: center;",
+    actionButton(inputId  = "input_action",
+                 label = "Load Database",
+                 icon = icon("arrow-up")))
+
+hr()
+
+data_master <- 
+  eventReactive(input$input_action, {
+    str_c("data/", input$input_select) %>% 
+      fx_sms_import()
+  })
+
+data_rank <- reactive({
+  data_master() %>%
+    fx_sms_summarise("by_contact") %>%
+    fx_sms_summarise("rank", rank_n = 20)
+})
+
+data_rank_plots <- reactive({
+  data_rank() %>%
+  fx_sms_visualize("bar_rank")
+})
+```
+
+
+Master Data {data-orientation=rows}
+================================================================================
+
+Section
+----------------------------------------------------------------------
+
+### Overview
+
+```{r intro-scatter}
+output$plot_scatter <- 
+  renderPlotly({
+    data_master() %>% fx_sms_visualize(plot_type = "scatter_all")
+  })
+
+plotlyOutput("plot_scatter")
+```
+
+
+Section {.tabset}
+----------------------------------------------------------------------
+
+### Message Overview
+
+```{r master-summary}
+output$master_summary <- render_gt({
+  data_master() %>% 
+    fx_sms_summarise() %>% 
+    rename(`First Message` = MinDate, 
+           `Last Message` = MaxDate) %>% 
+    gt() %>% 
+    fmt_date(vars(`First Message`, `Last Message`), date_style = 5)
+})
+
+gt_output("master_summary")
+```
+
+### Message Count
+
+```{r master-rank-msg-n}
+output$plot_message_n <- renderPlotly({data_rank_plots() %>% pluck("message_n")})
+plotlyOutput("plot_message_n")
+```
+
+### Message Length
+
+```{r master-rank-msg-l}
+output$plot_len <- renderPlotly({data_rank_plots() %>% pluck("length_sum")})
+plotlyOutput("plot_len")
+```
+
+### Avg Message Length
+
+```{r master-rank-msg-la}
+output$plot_lenavg <- renderPlotly({data_rank_plots() %>% pluck("length_avg")})
+plotlyOutput("plot_lenavg")
+```
+
+### Days of Contact
+
+```{r master-rank-msg-days}
+output$plot_days <- renderPlotly({data_rank_plots() %>% pluck("contact_days")})
+plotlyOutput("plot_days")
+```
+
+### Daily Messages
+
+```{r master-rank-msg-dn}
+output$plot_daymsg <- renderPlotly({data_rank_plots() %>% pluck("daily_messages")})
+plotlyOutput("plot_daymsg")
+```
+
+### Daily Length
+
+```{r master-rank-msg-dl}
+output$plot_daylength <- renderPlotly({data_rank_plots() %>% pluck("daily_length")})
+plotlyOutput("plot_daylength")
+```
+
+
+New Messages {data-orientation=rows}
+================================================================================
+
+Section
+----------------------------------------------------------------------
+
+### Import New Data
+
+```{r new-select}
+path_download <- str_glue("C://Users/{Sys.info()[['user']]}/Downloads/")
+
+input_choices_new <- path_download %>% dir(pattern = c(".xml|.txt"))
+
+selectizeInput(inputId = "new_select",
+               label = "Select New Datasets" %>% strong() %>% h5(),
+               multiple = TRUE,
+               choices = input_choices_new,
+               options = list(placeholder = "New Data"))
+
+hr()
+```
+
+```{r new-import}
+# Action Button: 'Import New Data'
+div(style = "display:inline-block;width:100%;text-align: center;",
+    actionButton(inputId  = "new_action",
+                 label = "Load New Datasets",
+                 icon = icon("angle-double-up")))
+
+# After Click - Importing New Data
+data_new <- eventReactive(input$new_action, {
+  str_c(path_download, input$new_select) %>% 
+    map(fx_sms_import) %>% 
+    reduce(bind_rows)
+})
+
+hr()
+```
+
+```{r new-metadata}
+# After Click - Display Metadata on Imported Files
+meta_new <- eventReactive(input$new_action, {
+  lst(length = length(input$new_select),
+      rows = nrow(data_new()) %>% scales::number(big.mark = ","),
+      date_min = min(data_new()$DateTime) %>% as.Date(),
+      date_max = max(data_new()$DateTime) %>% as.Date(),
+      text = str_glue("There were {length} datasets loaded,
+             with a total of {rows} messages,
+             ranging from {date_min} to {date_max}."))
+})
+
+
+output$new_meta <- renderUI({meta_new()$text %>% HTML() %>% em()})
+uiOutput("new_meta")
+```
+
+### Append New Data to Master Database
+
+```{r new-append}
+# Action Button: Append New Data to Master Data
+div(style = "display:inline-block;width:100%;text-align: center;",
+    actionButton(inputId = "new_append",
+                 label = "Append New Data",
+                 icon = icon("angle-double-down")))
+
+data_append <- eventReactive(input$new_append,{
+  fx_sms_append(new = data_new(), master = data_master())
+})
+
+hr()
+```
+
+```{r new-save}
+# Action Button: Save New Data to Directory
+div(style = "display:inline-block;width:100%;text-align: center;",
+    actionButton(inputId = "new_export",
+                 label = "Save Updated Data",
+                 icon = icon("save")))
+
+observeEvent(input$new_export, {
+  data_append()$new %>% fx_sms_export("new")
+  data_append()$master %>% fx_sms_export("master")
+})
+
+hr()
+```
+
+```{r append-meta}
+output$append_text <- renderText({
+  if (input$input_action == 0) {
+    "Please select a master database."
+  } else if (input$new_action == 0) {
+    "Please select new datasets."
+  } else if (input$input_action > 0 && input$new_action > 0 && input$new_append == 0) {
+    "Master database and new data are ready to be combined."
+  } else if (input$input_action > 0 && input$new_action > 0 && input$new_append > 0) {
+    lst(rows = data_append()$master %>% nrow() %>% scales::number(big.mark = ","),
+        date_min = min(data_append()$master$DateTime) %>% as.Date(),
+        date_max = max(data_append()$master$DateTime) %>% as.Date(),
+        text = str_glue("The updated master database has {rows} messages, 
+                        ranging from {date_min} to {date_max}.")) %>% 
+      pluck("text")
+  }
+})
+
+textOutput("append_text")
+```
+
+
+Section
+----------------------------------------------------------------------
+### Placeholder 2
+### Placeholder 4
+
+Page 3 {data-orientation=rows}
+================================================================================
+
+Debug
+================================================================================
+
+```{r debug}
+output$debug <- 
+  renderPrint({
+    list(
+      new_button = input$new_action
+      # , data = data_master() %>% colnames()
+      , new = data_new() %>% glimpse()
+      , new_meta = meta_new()
+      , append = data_append() %>% names()
+      , append_button = input$new_append
+    )
+  })
+
+verbatimTextOutput("debug")
+```
+

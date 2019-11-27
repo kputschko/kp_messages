@@ -11,16 +11,19 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
   library(colorspace)
   library(ggplot2)
   library(plotly)
+  library(ggridges)
 
 
   if (plot_type == "scatter_all" && is_null(contact)) {
-    # All - Scatterplot -------------------------------------------------------
+    # scatter_all -------------------------------------------------------------
     # Scatter plot of day by message length, with number of messages and contacts
     .temp_plot <-
       data %>%
       fx_sms_summarise("time_periods") %>%
       group_by(day) %>%
       fx_sms_summarise("group_summary") %>%
+
+
 
       ggplot() +
       aes(x = day, y = length_sum, size = message_n, color = contact_n) +
@@ -36,7 +39,7 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
 
 
   } else if (plot_type == "bar_rank") {
-    # Top N - Bar Comparison --------------------------------------------------
+    # bar_rank ----------------------------------------------------------------
     .temp_data <-
       data %>%
       mutate_at("Contact", as_factor) %>%
@@ -67,6 +70,7 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
        set_names(.temp_cols)
 
   } else if (plot_type == "send_rec") {
+    # send_rec ----------------------------------------------------------------
 
     .temp_plot <-
       data %>%
@@ -89,6 +93,7 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
     .temp_plot %>% ggplotly()
 
   } else if (plot_type == "period_adjustment") {
+    # period_adjustment -------------------------------------------------------
 
     data %>%
       ggplot() +
@@ -109,6 +114,28 @@ fx_sms_visualize <- function(data, plot_type, contact = NULL) {
       scale_fill_manual(values = c("#f8766d", "#00ba38", "#619cff")) +
       scale_y_continuous(limits = c(0.25, NA), labels = unit_format(unit = "x")) +
       fx_sms_plot_theme()$light_theme
+
+  } else if (plot_type == "rank_new") {
+    # rank_new ----------------------------------------------------------------
+
+    data %>%
+      ggplot(aes(x = DateTime,
+                 y = Contact,
+                 fill = 0.5 - abs(0.5 - ..ecdf..))) +
+      stat_density_ridges(geom = "density_ridges_gradient",
+                          calc_ecdf = TRUE,
+                          rel_min_height = 0.01,
+                          scale = 1) +
+      scale_fill_gradient(high = "gray90", low = "gray70", guide = FALSE) +
+      theme_ridges() +
+      scale_x_datetime(name = NULL,
+                       date_breaks = "2 months",
+                       date_minor_breaks = "1 month",
+                       date_labels = "%b %Y",
+                       expand = c(0.01, 0)) +
+      scale_y_discrete(name = NULL,
+                       expand = c(0.01, 0))
+
   }
 
 }

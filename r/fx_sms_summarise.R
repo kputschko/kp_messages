@@ -13,6 +13,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
 
 
+# glance ------------------------------------------------------------------
   if (type == "glance") {
     # ---- Summary at a glance, one row for entire database
     data %>%
@@ -26,6 +27,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
 
 
+# time_periods ------------------------------------------------------------
   } else if (type == "time_periods") {
     data %>%
       mutate(hour = hour(DateTime),
@@ -37,6 +39,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
 
 
+# group_summary -----------------------------------------------------------
   } else if (type == "group_summary") {
     # ---- Detailed summary by specified time period
     if (data %>% group_vars() %>% is_empty()) {abort("Time period summaries require a group column")}
@@ -50,6 +53,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
 
 
+# by_contact --------------------------------------------------------------
   } else if (type == "by_contact") {
     # --- Summary by contact,
     # --- Add groups prior to running this function for day/week/message type/etc.
@@ -66,6 +70,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
 
 
 
+# rank --------------------------------------------------------------------
   } else if (type == "rank") {
     stopifnot(c("message_n", "length_sum") %in% colnames(data))
 
@@ -76,7 +81,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
              .Rank_Contact_Days = dense_rank(desc(contact_days)),
              .Rank_Messages_per_Day = dense_rank(desc(daily_messages)),
              .Rank_Length_per_Day = dense_rank(desc(daily_length)),
-             rank_score = .Rank_Message_Count + .Rank_Length_Sum + .Rank_Contact_Days + .Rank_Messages_per_Day) %>%
+             rank_score = .Rank_Message_Count + .Rank_Length_Sum + .Rank_Contact_Days + .5*.Rank_Messages_per_Day) %>%
       select(-contains(".Rank"))
 
     # ---- Select Top N
@@ -87,8 +92,21 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
     }
 
 
+# rank_new ----------------------------------------------------------------
+  } else if (type == "rank_new") {
 
+    data %>%
+      filter(Contact != "(Unknown)") %>%
+      fx_sms_summarise(type = "by_contact") %>%
+      fx_sms_summarise(type = "rank") %>%
+      filter(contact_first > (data_summary$MaxDate - months(6))) %>%
+      top_n(10, -rank_score) %>%
+      arrange(rank_score)
+
+
+# send_rec ----------------------------------------------------------------
   } else if (type == "send_rec") {
+
     data %>%
       select(Contact, DateTime, MessageType, Message, MessageLength, day) %>%
       mutate(length_adj = if_else(MessageType == "Sent", -MessageLength, MessageLength)) %>%
@@ -105,6 +123,7 @@ fx_sms_summarise <- function(data, type = "glance", rank_n = NULL) {
       arrange(-`Days of Contact`)
 
 
+# period_adjustment -------------------------------------------------------
   } else if (type == "period_adjustment") {
 
     data %>%

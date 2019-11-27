@@ -9,7 +9,7 @@
 
 # Environment -------------------------------------------------------------
 
-pacman::p_load(tidyverse)
+pacman::p_load(tidyverse, anytime)
 
 source("r/fx_sms_import.r")
 source("r/fx_sms_summarise.r")
@@ -43,7 +43,12 @@ data_updated$added
 
 
 # |- Export New File and Updated Master -----------------------------------
+
+# whatsapp new output
 data_updated$new %>% fx_sms_export(filename_label = "new_whatsapp")
+
+# normal output
+data_updated$new %>% fx_sms_export(filename_label = "new")
 data_updated$master %>% fx_sms_export(filename_label = "master")
 
 
@@ -55,12 +60,16 @@ data_updated$master %>% fx_sms_export(filename_label = "master")
 
 # Data Repository ---------------------------------------------------------
 data_master <-
-  "C:/Users/kputs/OneDrive/Data/kp_messages/data/2019-09-26_master.rds" %>%
-  fx_sms_import()
+  fx_sms_import("data/2019-11-25_master.rds") %>%
+  filter(Contact != "(Unknown)")
 
 data_dates <-
   data_master %>%
   fx_sms_filter(mindate = "2019-01-01", maxdate = "2019-06-01")
+
+data_summary <-
+  data_master %>%
+  fx_sms_summarise()
 
 data_rank <-
   data_master %>%
@@ -93,6 +102,35 @@ plot_top$message_n
 data_periods %>%
   fx_sms_summarise("send_rec") %>%
   fx_sms_visualize("send_rec")
+
+
+# New Contacts ------------------------------------------------------------
+data_new_contacts <-
+  data_master %>%
+  fx_sms_summarise(type = "rank_new") %>%
+  print()
+
+data_master %>%
+  semi_join(data_new_contacts, by = "Contact") %>%
+  arrange(DateTime) %>%
+  mutate(Contact = fct_inorder(Contact, ordered = TRUE) %>% fct_rev()) %>%
+  fx_sms_visualize("rank_new")
+
+
+# ! Experimental -
+pacman::p_load_gh("rstudio/gt")
+
+data_new_contacts %>%
+  select(Contact, message_n, length_sum) %>%
+  gt(rowname_col = "Contact") %>%
+  tab_header(title = "New Contacts",
+             subtitle = "In the Last 6 Months")
+  cols_label(message_n = "Messages",
+             length_sum = "<center>Total<br>Message Length</center>" %>% html()) %>%
+  fmt_number(columns = vars(length_sum),
+             scale_by = 1 / 1000,
+             decimals = 1,
+             pattern = "{x}k")
 
 
 # All - Habit Comparison --------------------------------------------------
@@ -142,24 +180,28 @@ test_string %>% str_extract('(?:(?:https?|ftp):\\/\\/)?[\\w/\\-?=%.]+\\.[\\w/\\-
 
 # Order of Operations -----------------------------------------------------
 
-# Side Bar  - Date Filter
-# |- Apply date filter to all non-import-export operations
+# Side Bar ---
+# - Import master database
 
-# Main Page - Import / Export / Summary Tables
+# Master Database ---
+# - Scatterplot: Day by Message Length (N Msg, N Contact)
+# - Summary Values: N Messages, N Contacts, Sum Length, Date Min, Date Max
+# - Bar Graph: Top 20 Contacts (Count, Length, Days, Daily Avg)
 
-# Main Page - Overall Scatterplot
-# |- Daily summary, number of messages, total length, number of contacts
+# New Messages ---
+# - Load: New Backups
+# - Merge: New and Master
+# - Export: Updated Master
+# - Table: New Contacts Last 3/6 Months
+# - Lollipop Chart: Habit Changes in Last 3/6 Months
 
-# Contacts  - Top 20: Bars / Count / Length / Days / Per Day
-# Contacts  - Top 20:
-# Contacts  -| Longer Messages
-# Contacts  -| Changes in Message Habits last 3/6 months -
-# Contacts  ----| group by contact and time period, compare requested time period with previous time periods
+# Contact Specific ---
+# - Select Contact
+# - Table: Summary by contact and message type
+# - Timeline: Week by (Min, Max, Median, N Message, Length)
+# - Initial Messages: First message type by contact and day
+# - Word Sentiment Freq: Unnesting message by workd, total words, total sentiment score, prop of sentiment
 
-# Contacts  - Select Contact
-# Contacts  -| Summary Table - summary by contact and message type
-# Contacts  -| Contact Timeline - min, max, median, count of message length by week
-# Contacts  -| Initial Messages - first message type by contact and day
-# Contacts  -| Word Sentiment Frequency - unnest message by word, total words, total sentiment score, proportion of sentiment
+# Sent Messages ---
 
-# Sender    -
+

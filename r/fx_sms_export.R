@@ -13,9 +13,11 @@ fx_sms_export <- function(data, filename_label) {
     max() %>%
     date()
 
-  write_rds(data,
-            path = str_glue("data/{filename_date}_{filename_label}.rds"),
-            compress = "bz")
+  filepath <- str_glue("data/{filename_date}_{filename_label}.rds")
+
+  str_glue("|- Writing {filepath}") %>% inform()
+
+  write_rds(data, path = filepath, compress = "bz")
 
 
 }

@@ -13,8 +13,8 @@ fx_sms_append <- function(new, master) {
   message("Appending New to Master")
   data_update <-
     bind_rows(master, new) %>%
-    arrange(desc(DateTime)) %>%
     ungroup() %>%
+    arrange(desc(DateTime)) %>%
     distinct()
 
 
